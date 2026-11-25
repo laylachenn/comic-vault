@@ -18,12 +18,25 @@ export function CoverImage({ src, title, issue, className }: { src: string | nul
   );
 }
 
-export function ComicCard({ comic, showSeries = true }: { comic: Comic; showSeries?: boolean }) {
+type CardComic = Pick<Comic, "id" | "series" | "volume_year" | "issue_number" | "title" | "cover_date" | "cover_path" | "status">;
+
+/**
+ * One comic in a grid. By default it links to the comic's page.
+ * `href={null}` shows it without a link (shared pages); `onToggle` makes it a tick-box for selecting.
+ */
+export function ComicCard({ comic, showSeries = true, href, selected, onToggle }: {
+  comic: CardComic;
+  showSeries?: boolean;
+  href?: string | null;
+  selected?: boolean;
+  onToggle?: () => void;
+}) {
   const name = seriesName(comic);
   const sub = [showSeries ? comic.title : null, comic.cover_date?.slice(0, 4) || null].filter(Boolean).join(" · ");
-  return (
-    <Link href={`/comic?id=${comic.id}`} className="cover">
+  const body = (
+    <>
       <CoverImage src={coverUrl(comic.cover_path)} title={name} issue={comic.issue_number} />
+      {onToggle ? <span className="tick" aria-hidden="true">{selected ? "✓" : ""}</span> : null}
       <span className="t">{showSeries ? name : comic.title || `${name} ${issueLabel(comic.issue_number)}`}</span>
       {sub || comic.status === "wanted" ? (
         <span className="s">
@@ -31,6 +44,16 @@ export function ComicCard({ comic, showSeries = true }: { comic: Comic; showSeri
           {sub}
         </span>
       ) : null}
-    </Link>
+    </>
   );
+
+  if (onToggle) {
+    return (
+      <button type="button" className={`cover selectable ${selected ? "selected" : ""}`} aria-pressed={!!selected} onClick={onToggle}>
+        {body}
+      </button>
+    );
+  }
+  const link = href === undefined ? `/comic?id=${comic.id}` : href;
+  return link ? <Link href={link} className="cover">{body}</Link> : <div className="cover">{body}</div>;
 }

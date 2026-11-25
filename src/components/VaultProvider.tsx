@@ -80,12 +80,15 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     else { setComics([]); setLoaded(false); }
   }, [userId, reload]);
 
+  // Shared collections (/u/<name>) are open to everyone, signed in or not.
+  const isPublic = pathname.startsWith("/u/");
+
   // Send signed-out people to the sign-in page, and signed-in people away from it.
   useEffect(() => {
     if (!checked || !supabaseConfigured) return;
-    if (!session && pathname !== "/login") router.replace("/login");
+    if (!session && pathname !== "/login" && !isPublic) router.replace("/login");
     if (session && pathname === "/login") router.replace("/");
-  }, [checked, session, pathname, router]);
+  }, [checked, session, pathname, router, isPublic]);
 
   const toast = useCallback((msg: string) => {
     setToastMsg(msg);
@@ -120,7 +123,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const waiting = !checked || (!session && pathname !== "/login") || (session && pathname === "/login");
+  const waiting = !checked || (!session && pathname !== "/login" && !isPublic) || (session && pathname === "/login");
 
   return (
     <Ctx.Provider value={value}>

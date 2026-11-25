@@ -7,6 +7,8 @@ import { Masthead } from "@/components/Masthead";
 import { CoverImage } from "@/components/Cover";
 import { ComicForm } from "@/components/ComicForm";
 import { CvIssueCard, useAddFromCv, useCvIssues } from "@/components/CvIssues";
+import { CvRangeAdd } from "@/components/RangeAdd";
+import { seriesKey } from "@/lib/comics";
 import { useVault } from "@/components/VaultProvider";
 import { api } from "@/lib/api";
 import type { CvVolume } from "@/lib/types";
@@ -71,7 +73,7 @@ function AddComic() {
           <h2>Add a comic by hand</h2>
           <p className="meta">For anything Comic Vine doesn&rsquo;t have. Snap your own cover photo.</p>
         </div>
-        <ComicForm defaults={{ series: parseQuery(q).name, issue_number: parseQuery(q).issue }} onDone={(c) => router.push(`/comic?id=${c.id}`)} onCancel={() => setManual(false)} />
+        <ComicForm defaults={{ series: parseQuery(q).name, issue_number: parseQuery(q).issue }} onDone={(c, added) => router.push(added > 1 ? `/series?key=${encodeURIComponent(seriesKey(c))}` : `/comic?id=${c.id}`)} onCancel={() => setManual(false)} />
       </main>
     );
   }
@@ -142,6 +144,7 @@ function IssuePicker({ volumeId, issueFilter, onBack, onClearFilter }: { volumeI
           <Link href={`/series?key=cv-${volumeId}`}>See your run of this series</Link>
         </p>
         {issueFilter ? <button className="linkish" style={{ justifySelf: "start" }} onClick={onClearFilter}>Show every issue</button> : null}
+        <div className="actions"><CvRangeAdd volumeId={volumeId} volumeName={volume?.name ?? ""} /></div>
       </div>
       {error ? <p className="notice" role="alert">{error} <button className="linkish" onClick={retry}>Try again</button></p> : null}
       {!loading && !error && !issues.length ? (

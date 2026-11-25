@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Masthead } from "@/components/Masthead";
 import { ComicCard } from "@/components/Cover";
 import { CvIssueCard, useAddFromCv, useCvIssues } from "@/components/CvIssues";
+import { CvRangeAdd } from "@/components/RangeAdd";
 import { useVault } from "@/components/VaultProvider";
 import { issueSortValue, seriesKey, seriesName } from "@/lib/comics";
 import type { Comic } from "@/lib/types";
@@ -86,7 +87,10 @@ function CvSeries({ volumeId, mine }: { volumeId: number; mine: Comic[] }) {
           <button aria-pressed={show === "missing"} onClick={() => setShow("missing")}>Missing</button>
           <button aria-pressed={show === "owned"} onClick={() => setShow("owned")}>Mine</button>
         </div>
-        <Link className="btn small" href={`/add?q=${encodeURIComponent(volume?.name ?? "")}`}>Search other series</Link>
+        <div className="actions">
+          <CvRangeAdd volumeId={volumeId} volumeName={volume?.name ?? ""} />
+          <Link className="btn small" href={`/add?q=${encodeURIComponent(volume?.name ?? "")}`}>Search other series</Link>
+        </div>
       </div>
 
       <div className="grid">

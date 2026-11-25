@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Masthead } from "@/components/Masthead";
+import { BulkBar } from "@/components/BulkEdit";
 import { ComicCard, CoverImage } from "@/components/Cover";
 import { useVault } from "@/components/VaultProvider";
 import { groupSeries, issueSortValue, matches, seriesName, type SeriesGroup } from "@/lib/comics";
@@ -47,6 +48,17 @@ function Collection() {
   const [q, setQ] = useState(urlQ);
   const [view, setView] = useState<View>("issues");
   const [sort, setSort] = useState<Sort>("series");
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+
+  function toggle(id: string) {
+    setPicked((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  function stopSelecting() { setSelecting(false); setPicked(new Set()); }
 
   useEffect(() => setQ(urlQ), [urlQ]);
 
@@ -103,10 +115,12 @@ function Collection() {
       <div className="bar">
         <div className="tabs" role="group" aria-label="View">
           <button aria-pressed={view === "issues"} onClick={() => setView("issues")}>Issues</button>
-          <button aria-pressed={view === "series"} onClick={() => setView("series")}>Series</button>
+          <button aria-pressed={view === "series"} onClick={() => { setView("series"); stopSelecting(); }}>Series</button>
           <button aria-pressed={view === "wanted"} onClick={() => setView("wanted")}>Want list</button>
         </div>
         {view !== "series" ? (
+          <div className="actions">
+          {comics.length && !selecting ? <button className="btn small" onClick={() => setSelecting(true)}>Select</button> : null}
           <label className="sort" htmlFor="sort">Sort
             <select id="sort" value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
               <option value="series">Series &amp; issue</option>
@@ -114,6 +128,7 @@ function Collection() {
               <option value="year">Cover date</option>
             </select>
           </label>
+          </div>
         ) : null}
       </div>
 
@@ -149,7 +164,11 @@ function Collection() {
               <div className="grid">{groupSeries(hits).map((g) => <SeriesCard key={g.key} g={g} />)}</div>
             ) : <NoHits query={query} />
           ) : hits.length ? (
-            <div className="grid">{hits.map((c) => <ComicCard key={c.id} comic={c} />)}</div>
+            <div className="grid">{hits.map((c) => (
+              selecting
+                ? <ComicCard key={c.id} comic={c} selected={picked.has(c.id)} onToggle={() => toggle(c.id)} />
+                : <ComicCard key={c.id} comic={c} />
+            ))}</div>
           ) : view === "wanted" && !query ? (
             <div className="empty"><p>Your want list is empty. On any series page, tap <b>Want</b> on an issue you&rsquo;re missing.</p></div>
           ) : (
@@ -157,6 +176,14 @@ function Collection() {
           )}
         </>
       )}
+      {selecting ? (
+        <BulkBar
+          selected={comics.filter((c) => picked.has(c.id))}
+          visibleIds={view === "series" ? [] : hits.map((c) => c.id)}
+          onSelectAll={() => setPicked((s) => new Set([...s, ...hits.map((c) => c.id)]))}
+          onDone={stopSelecting}
+        />
+      ) : null}
     </main>
   );
 }

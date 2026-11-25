@@ -50,18 +50,23 @@ export function useAddFromCv() {
   const { putLocal, toast } = useVault();
   const [busy, setBusy] = useState<Record<number, boolean>>({});
 
+  /** Adds one issue without any message. Throws if it fails. */
+  async function addOne(issue: CvIssue, status: Status, existing?: Comic) {
+    if (existing) {
+      // Already on the want list: just mark it owned.
+      const { data, error } = await supabase().from("comics").update({ status, updated_at: new Date().toISOString() }).eq("id", existing.id).select().single();
+      if (error) throw new Error("Couldn't update it. Try again.");
+      putLocal(data as Comic);
+    } else {
+      const { comic } = await api<{ comic: Comic }>("/api/collection/add", { method: "POST", body: JSON.stringify({ cvIssueId: issue.id, status }) });
+      putLocal(comic);
+    }
+  }
+
   async function add(issue: CvIssue, status: Status, existing?: Comic) {
     setBusy((b) => ({ ...b, [issue.id]: true }));
     try {
-      if (existing) {
-        // Already on the want list: just mark it owned.
-        const { data, error } = await supabase().from("comics").update({ status, updated_at: new Date().toISOString() }).eq("id", existing.id).select().single();
-        if (error) throw new Error("Couldn't update it. Try again.");
-        putLocal(data as Comic);
-      } else {
-        const { comic } = await api<{ comic: Comic }>("/api/collection/add", { method: "POST", body: JSON.stringify({ cvIssueId: issue.id, status }) });
-        putLocal(comic);
-      }
+      await addOne(issue, status, existing);
       const name = `${issue.volume_name ?? "Issue"} ${issueLabel(issue.issue_number)}`.trim();
       toast(status === "wanted" ? `Added ${name} to your want list` : `Added ${name} to your collection`);
     } catch (e) {
@@ -71,7 +76,20 @@ export function useAddFromCv() {
     }
   }
 
-  return { add, busy };
+  return { add, addOne, busy };
+}
+
+/** Loads every issue of a Comic Vine series (up to 2,000), page by page. */
+export async function fetchAllCvIssues(volumeId: number): Promise<CvIssue[]> {
+  const all: CvIssue[] = [];
+  for (let offset = 0, total = Infinity; offset < total && offset < 2000; ) {
+    const page = await api<IssuesPage>(`/api/cv/issues?volume=${volumeId}&offset=${offset}`);
+    all.push(...page.issues);
+    total = page.total;
+    if (!page.issues.length) break;
+    offset += page.issues.length;
+  }
+  return all;
 }
 
 /** One Comic Vine issue with buttons that depend on whether you already have it. */

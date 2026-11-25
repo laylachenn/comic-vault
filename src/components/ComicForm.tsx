@@ -3,13 +3,14 @@
 import { useMemo, useState } from "react";
 import { supabase, coverUrl } from "@/lib/supabase";
 import { shrinkPhoto } from "@/lib/comics";
+import { parseRange } from "./RangeAdd";
 import type { Comic, ComicInput, Status } from "@/lib/types";
 import { useVault } from "./VaultProvider";
 import { TagInput } from "./TagInput";
 
 type Draft = {
   status: Status;
-  series: string; issue_number: string; volume_year: string; publisher: string; cover_date: string;
+  series: string; issue_number: string; through: string; volume_year: string; publisher: string; cover_date: string;
   title: string; variant: string; characters: string[];
   grade: string; slabbed: boolean; price_paid: string; is_read: boolean; location: string; tags: string[]; notes: string;
 };
@@ -17,7 +18,7 @@ type Draft = {
 function toDraft(c: ComicInput | undefined): Draft {
   return {
     status: c?.status ?? "owned",
-    series: c?.series ?? "", issue_number: c?.issue_number ?? "", volume_year: c?.volume_year ?? "",
+    series: c?.series ?? "", issue_number: c?.issue_number ?? "", through: "", volume_year: c?.volume_year ?? "",
     publisher: c?.publisher ?? "", cover_date: c?.cover_date ?? "", title: c?.title ?? "", variant: c?.variant ?? "",
     characters: c?.characters ?? [],
     grade: c?.grade ?? "", slabbed: c?.slabbed ?? false, price_paid: c?.price_paid != null ? String(c.price_paid) : "",
@@ -35,7 +36,8 @@ const newId = () =>
 export function ComicForm({ comic, defaults, onDone, onCancel, submitLabel }: {
   comic?: Comic;
   defaults?: ComicInput;
-  onDone: (c: Comic) => void;
+  /** Called with the first saved comic and how many were added (more than 1 for a range). */
+  onDone: (c: Comic, added: number) => void;
   onCancel?: () => void;
   submitLabel?: string;
 }) {
@@ -61,6 +63,12 @@ export function ComicForm({ comic, defaults, onDone, onCancel, submitLabel }: {
     if (!d.series.trim()) { setError("Add the series name."); return; }
     const price = d.price_paid.trim() ? Number(d.price_paid.replace(/[$,]/g, "")) : null;
     if (price != null && (!Number.isFinite(price) || price < 0)) { setError("Price paid should be a number, like 4.99."); return; }
+    let numbers: string[] = [d.issue_number.trim().replace(/^#/, "")];
+    if (!comic && d.through.trim()) {
+      const range = parseRange(d.issue_number, d.through);
+      if (typeof range === "string") { setError(range); return; }
+      numbers = Array.from({ length: range.to - range.from + 1 }, (_, i) => String(range.from + i));
+    }
     setSaving(true);
     setError("");
     const sb = supabase();
@@ -74,7 +82,7 @@ export function ComicForm({ comic, defaults, onDone, onCancel, submitLabel }: {
       }
       const row = {
         status: d.status,
-        series: d.series.trim(), issue_number: d.issue_number.trim().replace(/^#/, "") || null,
+        series: d.series.trim(), issue_number: numbers[0] || null,
         volume_year: d.volume_year.trim() || null, publisher: d.publisher.trim() || null,
         cover_date: d.cover_date.trim() || null, title: d.title.trim() || null, variant: d.variant.trim() || null,
         characters: d.characters,
@@ -83,13 +91,21 @@ export function ComicForm({ comic, defaults, onDone, onCancel, submitLabel }: {
         ...(newPath ? { cover_path: newPath } : {}),
         ...(comic ? { updated_at: new Date().toISOString() } : {}),
       };
-      const res = comic
-        ? await sb.from("comics").update(row).eq("id", comic.id).select().single()
-        : await sb.from("comics").insert(row).select().single();
-      if (res.error) throw new Error("Couldn't save. Check your connection and try again.");
-      if (newPath && comic?.cover_path) await sb.storage.from("covers").remove([comic.cover_path]);
-      putLocal(res.data as Comic);
-      onDone(res.data as Comic);
+      if (comic) {
+        const res = await sb.from("comics").update(row).eq("id", comic.id).select().single();
+        if (res.error) throw new Error("Couldn't save. Check your connection and try again.");
+        if (newPath && comic.cover_path) await sb.storage.from("covers").remove([comic.cover_path]);
+        putLocal(res.data as Comic);
+        onDone(res.data as Comic, 1);
+      } else {
+        // A range gets one entry per issue. The photo only goes on the first, so each cover stays its own file.
+        const rows = numbers.map((n, i) => ({ ...row, issue_number: n || null, ...(i > 0 ? { cover_path: null } : {}) }));
+        const res = await sb.from("comics").insert(rows).select();
+        if (res.error || !res.data?.length) throw new Error("Couldn't save. Check your connection and try again.");
+        const saved = res.data as Comic[];
+        saved.forEach(putLocal);
+        onDone(saved.find((c) => c.issue_number === (numbers[0] || null)) ?? saved[0], saved.length);
+      }
     } catch (err) {
       if (newPath) await sb.storage.from("covers").remove([newPath]).catch(() => {});
       setError(err instanceof Error ? err.message : "Couldn't save. Try again.");
@@ -127,10 +143,16 @@ export function ComicForm({ comic, defaults, onDone, onCancel, submitLabel }: {
               <input id={`${p}-series`} list={`${p}-series-list`} value={d.series} onChange={(e) => set("series", e.target.value)} autoComplete="off" required />
               <datalist id={`${p}-series-list`}>{sug.series.map((s) => <option key={s} value={s} />)}</datalist>
             </div>
-            <div className="field w2">
+            <div className={comic ? "field w2" : "field w1"}>
               <label htmlFor={`${p}-issue`}>Issue #</label>
               <input id={`${p}-issue`} value={d.issue_number} onChange={(e) => set("issue_number", e.target.value)} inputMode="text" autoComplete="off" />
             </div>
+            {!comic ? (
+              <div className="field w1">
+                <label htmlFor={`${p}-through`}>Through #</label>
+                <input id={`${p}-through`} value={d.through} onChange={(e) => set("through", e.target.value)} inputMode="numeric" placeholder="optional" autoComplete="off" />
+              </div>
+            ) : null}
             <div className="field w2">
               <label htmlFor={`${p}-vol`}>Volume year</label>
               <input id={`${p}-vol`} value={d.volume_year} onChange={(e) => set("volume_year", e.target.value)} inputMode="numeric" placeholder="1963" autoComplete="off" />
