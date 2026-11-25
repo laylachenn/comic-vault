@@ -8,7 +8,8 @@ import { CoverImage } from "@/components/Cover";
 import { CvIssueCard, useAddFromCv } from "@/components/CvIssues";
 import { useVault } from "@/components/VaultProvider";
 import { api } from "@/lib/api";
-import { parseAddOn, type ComicBarcode } from "@/lib/barcode";
+import { parseAddOn, variantLabel, type ComicBarcode } from "@/lib/barcode";
+import { CoverChooser } from "@/components/CoverChooser";
 import { supabase } from "@/lib/supabase";
 import type { Comic, CvIssue, CvVolume } from "@/lib/types";
 
@@ -195,6 +196,8 @@ function ScanResult({ barcode, issue, series, onIssue, onWrongSeries, onNext }: 
   const [issues, setIssues] = useState<CvIssue[] | null>(null);
   const [error, setError] = useState("");
   const [typed, setTyped] = useState("");
+  const [chooseFor, setChooseFor] = useState<Comic | null>(null);
+  const variant = variantLabel(barcode.addon);
   const name = `${series.series_name}${series.volume_year ? ` (${series.volume_year})` : ""}`;
 
   useEffect(() => {
@@ -233,9 +236,23 @@ function ScanResult({ barcode, issue, series, onIssue, onWrongSeries, onNext }: 
         <div className="grid scan-grid">
           {issues.map((i) => (
             <CvIssueCard key={i.id} issue={i} mine={mineFor(i.id)} busy={!!busy[i.id]} seriesTitle={series.series_name}
-              onAdd={(status, existing) => add({ ...i, volume_name: i.volume_name ?? series.series_name }, status, existing)} />
+              onAdd={async (status, existing) => {
+                const saved = await add({ ...i, volume_name: i.volume_name ?? series.series_name }, status, existing, variant);
+                if (saved && variant && status === "owned") setChooseFor(saved);
+              }} />
           ))}
         </div>
+      ) : null}
+
+      {variant && issues?.length && !chooseFor ? (
+        <p className="hint">This barcode says <b>{variant}</b>. That&rsquo;s saved as the variant when you add it, and you can then pick the matching cover.</p>
+      ) : null}
+      {chooseFor ? (
+        <CoverChooser
+          comic={comics.find((c) => c.id === chooseFor.id) ?? chooseFor}
+          intro={`Your copy is ${variant}. Which cover is it?`}
+          onClose={() => setChooseFor(null)}
+        />
       ) : null}
 
       <div className="actions">

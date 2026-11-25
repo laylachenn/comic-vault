@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import { errorResponse, requireUser } from "@/lib/server/auth";
-import { CV_USER_AGENT, getIssueDetail, getVolume } from "@/lib/server/comicvine";
-
-const MAX_COVER_BYTES = 8 * 1024 * 1024;
+import { downloadCover, getIssueDetail, getVolume } from "@/lib/server/comicvine";
 
 /**
- * POST /api/collection/add  { cvIssueId: number, status?: "owned" | "wanted" }
+ * POST /api/collection/add  { cvIssueId: number, status?: "owned" | "wanted", variant?: string }
  * Looks the issue up on Comic Vine, saves a copy of its cover to the person's storage folder,
  * and adds it to their collection. Returns the new comic.
  */
@@ -17,6 +15,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const cvIssueId = Number(body.cvIssueId);
   const status = body.status === "wanted" ? "wanted" : "owned";
+  const variant = typeof body.variant === "string" ? body.variant.trim().slice(0, 120) : "";
   if (!Number.isInteger(cvIssueId) || cvIssueId <= 0) {
     return NextResponse.json({ error: "That comic couldn't be found. Search again." }, { status: 400 });
   }
@@ -28,22 +27,12 @@ export async function POST(req: Request) {
     // Keep our own copy of the cover so the collection never depends on Comic Vine later.
     let cover_path: string | null = null;
     const imageUrl = detail.largeImage || detail.issue.image;
-    if (imageUrl && imageUrl.startsWith("https://")) {
-      try {
-        const img = await fetch(imageUrl, { headers: { "User-Agent": CV_USER_AGENT } });
-        const type = img.headers.get("content-type") || "";
-        if (img.ok && /^image\/(jpeg|png|webp|gif)$/.test(type.split(";")[0])) {
-          const bytes = await img.arrayBuffer();
-          if (bytes.byteLength > 0 && bytes.byteLength <= MAX_COVER_BYTES) {
-            const ext = type.includes("png") ? "png" : type.includes("webp") ? "webp" : type.includes("gif") ? "gif" : "jpg";
-            const path = `${user.id}/cv-${cvIssueId}-${crypto.randomUUID()}.${ext}`;
-            const up = await sb.storage.from("covers").upload(path, bytes, { contentType: type.split(";")[0] });
-            if (!up.error) cover_path = path;
-          }
-        }
-      } catch {
-        // A missing cover shouldn't stop the comic from being added.
-      }
+    const img = imageUrl ? await downloadCover(imageUrl) : null;
+    if (img) {
+      // A missing cover shouldn't stop the comic from being added, so upload errors are ignored.
+      const path = `${user.id}/cv-${cvIssueId}-${crypto.randomUUID()}.${img.ext}`;
+      const up = await sb.storage.from("covers").upload(path, img.bytes, { contentType: img.type });
+      if (!up.error) cover_path = path;
     }
 
     const row = {
@@ -57,6 +46,7 @@ export async function POST(req: Request) {
       title: detail.issue.name,
       publisher: volume?.publisher || null,
       cover_date: detail.issue.cover_date,
+      variant: variant || null,
       characters: detail.characters.slice(0, 200),
       creators: detail.creators.slice(0, 100),
       cover_path,

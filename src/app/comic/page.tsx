@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Masthead } from "@/components/Masthead";
 import { CoverImage } from "@/components/Cover";
 import { ComicForm } from "@/components/ComicForm";
+import { CoverChooser } from "@/components/CoverChooser";
 import { useVault } from "@/components/VaultProvider";
 import { comicName, seriesKey, seriesName } from "@/lib/comics";
 import { coverUrl, supabase } from "@/lib/supabase";
@@ -41,6 +42,7 @@ function ComicDetail({ comic: c }: { comic: Comic }) {
   const { putLocal, removeLocal, toast } = useVault();
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [choosing, setChoosing] = useState(false);
   const [busy, setBusy] = useState(false);
 
   if (editing) {
@@ -123,9 +125,12 @@ function ComicDetail({ comic: c }: { comic: Comic }) {
         <div className="actions">
           {c.status === "wanted" ? <button className="btn small primary" disabled={busy} onClick={markOwned}>Got it!</button> : null}
           <button className="btn small" onClick={() => setEditing(true)}>Edit details</button>
+          <button className="btn small" onClick={() => setChoosing(true)}>Change cover</button>
           <Link className="btn small" href={`/series?key=${encodeURIComponent(seriesKey(c))}`}>See the whole series</Link>
           <button className="btn small danger" onClick={() => setConfirming(true)}>Remove</button>
         </div>
+
+        {choosing ? <CoverChooser comic={c} onClose={() => setChoosing(false)} /> : null}
 
         {confirming ? (
           <div className="confirm" role="alertdialog" aria-label="Confirm removal">

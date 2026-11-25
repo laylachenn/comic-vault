@@ -96,6 +96,7 @@ export const VOLUME_FIELDS = "id,name,start_year,publisher,count_of_issues,image
 export const ISSUE_FIELDS = "id,name,issue_number,cover_date,image,volume";
 
 export type RawIssueDetail = RawIssue & {
+  associated_images?: { original_url?: string }[];
   character_credits?: { name: string }[];
   person_credits?: { name: string; role?: string }[];
 };
@@ -103,16 +104,49 @@ export type RawIssueDetail = RawIssue & {
 export async function getIssueDetail(id: number) {
   const body = await cv<{ results: RawIssueDetail }>(
     `issue/4000-${id}`,
-    { field_list: `${ISSUE_FIELDS},character_credits,person_credits` },
+    { field_list: `${ISSUE_FIELDS},character_credits,person_credits,associated_images` },
     86400,
   );
   const r = body.results;
   return {
     issue: mapIssue(r),
     largeImage: pickImage(r.image ?? null, "large"),
+    // Other cover pictures Comic Vine has for this issue (usually variants). They aren't labeled reliably.
+    otherCovers: (r.associated_images || [])
+      .map((a) => a.original_url || "")
+      .filter((u) => isComicVineImage(u) && !/blank\.(png|gif|jpg)/i.test(u))
+      .slice(0, 24),
     characters: (r.character_credits || []).map((c) => c.name).filter(Boolean),
     creators: (r.person_credits || []).map((p) => (p.role ? `${p.name} (${p.role})` : p.name)).filter(Boolean),
   };
+}
+
+/** True only for picture addresses on Comic Vine's own server, so we never fetch anything else. */
+export function isComicVineImage(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" && (u.hostname === "comicvine.gamespot.com" || u.hostname.endsWith(".gamespot.com")) && u.pathname.startsWith("/a/uploads/");
+  } catch {
+    return false;
+  }
+}
+
+const MAX_COVER_BYTES = 8 * 1024 * 1024;
+
+/** Downloads a Comic Vine picture. Returns null if it isn't a usable image. */
+export async function downloadCover(url: string): Promise<{ bytes: ArrayBuffer; type: string; ext: string } | null> {
+  if (!isComicVineImage(url)) return null;
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": CV_USER_AGENT }, redirect: "error" });
+    const type = (res.headers.get("content-type") || "").split(";")[0];
+    if (!res.ok || !/^image\/(jpeg|png|webp|gif)$/.test(type)) return null;
+    const bytes = await res.arrayBuffer();
+    if (!bytes.byteLength || bytes.byteLength > MAX_COVER_BYTES) return null;
+    const ext = type.includes("png") ? "png" : type.includes("webp") ? "webp" : type.includes("gif") ? "gif" : "jpg";
+    return { bytes, type, ext };
+  } catch {
+    return null;
+  }
 }
 
 export async function getVolume(id: number): Promise<CvVolume> {

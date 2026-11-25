@@ -116,3 +116,15 @@ export async function readComicBarcode(read: Reader, img: Pixels): Promise<Comic
   }
   return { main, addon };
 }
+
+const ORDINAL = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];
+
+/** "00121" → "Cover 2", "00112" → "2nd printing", "00111" (the regular cover) → null. */
+export function variantLabel(addon: string | null): string | null {
+  const a = parseAddOn(addon);
+  if (!a) return null;
+  const parts: string[] = [];
+  if (a.cover !== "1" && a.cover !== "0") parts.push(`Cover ${a.cover}`);
+  if (a.printing !== "1" && a.printing !== "0") parts.push(`${ORDINAL[Number(a.printing)]} printing`);
+  return parts.length ? parts.join(", ") : null;
+}

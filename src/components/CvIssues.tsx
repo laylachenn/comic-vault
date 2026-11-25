@@ -50,27 +50,32 @@ export function useAddFromCv() {
   const { putLocal, toast } = useVault();
   const [busy, setBusy] = useState<Record<number, boolean>>({});
 
-  /** Adds one issue without any message. Throws if it fails. */
-  async function addOne(issue: CvIssue, status: Status, existing?: Comic) {
+  /** Adds one issue without any message, and returns it. Throws if it fails. */
+  async function addOne(issue: CvIssue, status: Status, existing?: Comic, variant?: string | null): Promise<Comic> {
     if (existing) {
       // Already on the want list: just mark it owned.
-      const { data, error } = await supabase().from("comics").update({ status, updated_at: new Date().toISOString() }).eq("id", existing.id).select().single();
+      const patch = { status, updated_at: new Date().toISOString(), ...(variant ? { variant } : {}) };
+      const { data, error } = await supabase().from("comics").update(patch).eq("id", existing.id).select().single();
       if (error) throw new Error("Couldn't update it. Try again.");
       putLocal(data as Comic);
-    } else {
-      const { comic } = await api<{ comic: Comic }>("/api/collection/add", { method: "POST", body: JSON.stringify({ cvIssueId: issue.id, status }) });
-      putLocal(comic);
+      return data as Comic;
     }
+    const { comic } = await api<{ comic: Comic }>("/api/collection/add", { method: "POST", body: JSON.stringify({ cvIssueId: issue.id, status, variant: variant ?? undefined }) });
+    putLocal(comic);
+    return comic;
   }
 
-  async function add(issue: CvIssue, status: Status, existing?: Comic) {
+  /** Adds one issue and shows a message. Returns the saved comic, or null if it failed. */
+  async function add(issue: CvIssue, status: Status, existing?: Comic, variant?: string | null): Promise<Comic | null> {
     setBusy((b) => ({ ...b, [issue.id]: true }));
     try {
-      await addOne(issue, status, existing);
+      const saved = await addOne(issue, status, existing, variant);
       const name = `${issue.volume_name ?? "Issue"} ${issueLabel(issue.issue_number)}`.trim();
       toast(status === "wanted" ? `Added ${name} to your want list` : `Added ${name} to your collection`);
+      return saved;
     } catch (e) {
       toast(e instanceof Error ? e.message : "Couldn't add it. Try again.");
+      return null;
     } finally {
       setBusy((b) => ({ ...b, [issue.id]: false }));
     }
