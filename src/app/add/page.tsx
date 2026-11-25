@@ -89,6 +89,7 @@ function AddComic() {
       </form>
       <div className="actions" style={{ marginTop: 10 }}>
         <button className="btn small primary" onClick={() => search()} disabled={searching}>{searching ? "Searching…" : "Search"}</button>
+        <Link className="btn small" href="/scan">Scan a barcode</Link>
         <button className="btn small" onClick={() => setManual(true)}>Add by hand instead</button>
       </div>
 

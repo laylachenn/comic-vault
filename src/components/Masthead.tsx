@@ -24,6 +24,7 @@ export function Masthead() {
       <div className="wrap mast-row">
         <Link href="/" className="brand"><h1>LAYLA&rsquo;S COMIC VAULT</h1></Link>
         <nav className="mast-actions">
+          <Link href="/scan" className="btn">Scan</Link>
           <Link href="/add" className="btn primary">+ Add comic</Link>
           <div className="menu-wrap">
             <button className="btn" aria-expanded={menu} aria-haspopup="menu" onClick={() => setMenu((m) => !m)}>Menu</button>
