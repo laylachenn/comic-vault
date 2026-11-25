@@ -219,6 +219,9 @@ a.tag { padding-right: 10px }
 .cover-option { display: grid; gap: 4px; border: 2px solid var(--line); border-radius: 8px; background: var(--bg); padding: 4px; cursor: pointer; font-size: 12px; font-weight: 600 }
 .cover-option:hover:not(:disabled) { border-color: var(--ink) }
 .cover-option img { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 4px; display: block }
+.covers-panel { grid-column: 1 / -1; display: grid; gap: 10px; background: var(--surface); border: 2px solid var(--ink); border-radius: 12px; padding: 12px }
+.cover.is-open .img { outline: 3px solid var(--accent); outline-offset: 2px }
+.cover-option.chosen { border-color: var(--hot); background: var(--hot-soft) }
 .file-hidden { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none }
 @media (max-width: 640px) {
   .comic-form { grid-template-columns: 1fr }

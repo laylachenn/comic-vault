@@ -236,16 +236,18 @@ function ScanResult({ barcode, issue, series, onIssue, onWrongSeries, onNext }: 
         <div className="grid scan-grid">
           {issues.map((i) => (
             <CvIssueCard key={i.id} issue={i} mine={mineFor(i.id)} busy={!!busy[i.id]} seriesTitle={series.series_name}
-              onAdd={async (status, existing) => {
-                const saved = await add({ ...i, volume_name: i.volume_name ?? series.series_name }, status, existing, variant);
-                if (saved && variant && status === "owned") setChooseFor(saved);
+              startOpen noDefaultCover={!!variant}
+              onAdd={async (status, existing, coverUrl) => {
+                const saved = await add({ ...i, volume_name: i.volume_name ?? series.series_name }, status, existing, { variant, coverUrl });
+                // No cover picked for a variant: offer the picker (and a photo) right after adding.
+                if (saved && variant && status === "owned" && !coverUrl) setChooseFor(saved);
               }} />
           ))}
         </div>
       ) : null}
 
       {variant && issues?.length && !chooseFor ? (
-        <p className="hint">This barcode says <b>{variant}</b>. That&rsquo;s saved as the variant when you add it, and you can then pick the matching cover.</p>
+        <p className="hint">This barcode says <b>{variant}</b>. Tap the cover that matches your copy, then add it. The variant is saved for you.</p>
       ) : null}
       {chooseFor ? (
         <CoverChooser

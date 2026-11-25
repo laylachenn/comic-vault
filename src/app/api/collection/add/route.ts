@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { errorResponse, requireUser } from "@/lib/server/auth";
-import { downloadCover, getIssueDetail, getVolume } from "@/lib/server/comicvine";
+import { downloadCover, getIssueDetail, getVolume, isComicVineImage } from "@/lib/server/comicvine";
 
 /**
- * POST /api/collection/add  { cvIssueId: number, status?: "owned" | "wanted", variant?: string }
+ * POST /api/collection/add  { cvIssueId: number, status?: "owned" | "wanted", variant?: string, coverUrl?: string }
+ * `coverUrl` picks one of Comic Vine's other covers for the issue (a variant) instead of the main one.
  * Looks the issue up on Comic Vine, saves a copy of its cover to the person's storage folder,
  * and adds it to their collection. Returns the new comic.
  */
@@ -16,6 +17,7 @@ export async function POST(req: Request) {
   const cvIssueId = Number(body.cvIssueId);
   const status = body.status === "wanted" ? "wanted" : "owned";
   const variant = typeof body.variant === "string" ? body.variant.trim().slice(0, 120) : "";
+  const chosenCover = typeof body.coverUrl === "string" && isComicVineImage(body.coverUrl) ? body.coverUrl : null;
   if (!Number.isInteger(cvIssueId) || cvIssueId <= 0) {
     return NextResponse.json({ error: "That comic couldn't be found. Search again." }, { status: 400 });
   }
@@ -26,7 +28,7 @@ export async function POST(req: Request) {
 
     // Keep our own copy of the cover so the collection never depends on Comic Vine later.
     let cover_path: string | null = null;
-    const imageUrl = detail.largeImage || detail.issue.image;
+    const imageUrl = chosenCover || detail.largeImage || detail.issue.image;
     const img = imageUrl ? await downloadCover(imageUrl) : null;
     if (img) {
       // A missing cover shouldn't stop the comic from being added, so upload errors are ignored.

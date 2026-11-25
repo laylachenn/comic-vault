@@ -155,7 +155,7 @@ function IssuePicker({ volumeId, issueFilter, onBack, onClearFilter }: { volumeI
       <div className="grid" style={{ paddingTop: 12 }}>
         {issues.map((i) => (
           <CvIssueCard key={i.id} issue={i} mine={mineByIssue.get(i.id) ?? []} busy={!!busy[i.id]} seriesTitle={volume?.name ?? ""}
-            onAdd={(status, existing) => add({ ...i, volume_name: i.volume_name ?? volume?.name ?? null }, status, existing)} />
+            onAdd={(status, existing, coverUrl) => add({ ...i, volume_name: i.volume_name ?? volume?.name ?? null }, status, existing, { coverUrl })} />
         ))}
       </div>
       {loading ? <div className="empty"><span className="spinner" /> Loading issues…</div> : null}
