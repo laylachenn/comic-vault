@@ -7,10 +7,13 @@ import { Masthead } from "@/components/Masthead";
 import { BulkBar } from "@/components/BulkEdit";
 import { ComicCard, CoverImage } from "@/components/Cover";
 import { useVault } from "@/components/VaultProvider";
-import { groupSeries, issueSortValue, matches, seriesName, type SeriesGroup } from "@/lib/comics";
+import { groupSeries, isKey, issueSortValue, matches, seriesName, type SeriesGroup } from "@/lib/comics";
+import { ExtrasBackfill } from "@/components/Reading";
+import { MissingCovers } from "@/components/MissingCovers";
 import { coverUrl } from "@/lib/supabase";
 
-type View = "issues" | "series" | "wanted";
+type View = "issues" | "series" | "wanted" | "keys";
+const VIEWS: View[] = ["issues", "series", "wanted", "keys"];
 type Sort = "series" | "added" | "year";
 
 export default function Page() {
@@ -46,7 +49,8 @@ function Collection() {
   const router = useRouter();
   const urlQ = params.get("q") ?? "";
   const [q, setQ] = useState(urlQ);
-  const [view, setView] = useState<View>("issues");
+  const urlView = params.get("view") as View | null;
+  const [view, setView] = useState<View>(urlView && VIEWS.includes(urlView) ? urlView : "issues");
   const [sort, setSort] = useState<Sort>("series");
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -77,7 +81,8 @@ function Collection() {
   }, [owned]);
 
   const query = q.trim();
-  const base = view === "wanted" ? wanted : owned;
+  const keys = useMemo(() => owned.filter(isKey), [owned]);
+  const base = view === "wanted" ? wanted : view === "keys" ? keys : owned;
   const hits = useMemo(() => {
     const list = base.filter((c) => matches(c, query));
     if (sort === "added") return list.sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -111,12 +116,14 @@ function Collection() {
       ) : null}
 
       {loadError ? <p className="notice" role="alert">{loadError}</p> : null}
+      {loaded && !loadError ? <MissingCovers /> : null}
 
       <div className="bar">
         <div className="tabs" role="group" aria-label="View">
           <button aria-pressed={view === "issues"} onClick={() => setView("issues")}>Issues</button>
           <button aria-pressed={view === "series"} onClick={() => { setView("series"); stopSelecting(); }}>Series</button>
           <button aria-pressed={view === "wanted"} onClick={() => setView("wanted")}>Want list</button>
+          <button aria-pressed={view === "keys"} onClick={() => setView("keys")}>Keys</button>
         </div>
         {view !== "series" ? (
           <div className="actions">
@@ -155,7 +162,8 @@ function Collection() {
           ) : null}
           {query ? (
             <div className="section-label">
-              {hits.length} {hits.length === 1 ? "comic matches" : "comics match"} &ldquo;{query}&rdquo;{view === "wanted" ? " on your want list" : ""}
+              {hits.length} {hits.length === 1 ? "comic matches" : "comics match"} &ldquo;{query}&rdquo;{view === "wanted" ? " on your want list" : view === "keys" ? " among your key issues" : ""}
+              {" · "}<Link href={`/characters?q=${encodeURIComponent(query)}`}>Every comic with &ldquo;{query}&rdquo; as a character</Link>
             </div>
           ) : null}
 
@@ -171,6 +179,8 @@ function Collection() {
             ))}</div>
           ) : view === "wanted" && !query ? (
             <div className="empty"><p>Your want list is empty. On any series page, tap <b>Want</b> on an issue you&rsquo;re missing.</p></div>
+          ) : view === "keys" && !query ? (
+            <div className="empty"><p>No key issues yet. When a character&rsquo;s first appearance is in one of your comics, it shows up here.</p><ExtrasBackfill /></div>
           ) : (
             <NoHits query={query} />
           )}

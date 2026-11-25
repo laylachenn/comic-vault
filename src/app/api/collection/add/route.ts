@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { errorResponse, requireUser } from "@/lib/server/auth";
-import { downloadCover, getIssueDetail, getVolume, isComicVineImage } from "@/lib/server/comicvine";
+import { downloadCover, getIssueDetail, getIssueExtras, getVolume, isComicVineImage } from "@/lib/server/comicvine";
 
 /**
  * POST /api/collection/add  { cvIssueId: number, status?: "owned" | "wanted", variant?: string, coverUrl?: string }
@@ -25,6 +25,9 @@ export async function POST(req: Request) {
   try {
     const detail = await getIssueDetail(cvIssueId);
     const volume = detail.issue.volume_id ? await getVolume(detail.issue.volume_id) : null;
+    // First appearances and story arcs are nice to have: if Comic Vine is slow or limiting us,
+    // add the comic anyway and leave them to be looked up later.
+    const extras = await getIssueExtras(cvIssueId).catch(() => null);
 
     // Keep our own copy of the cover so the collection never depends on Comic Vine later.
     let cover_path: string | null = null;
@@ -52,6 +55,9 @@ export async function POST(req: Request) {
       characters: detail.characters.slice(0, 200),
       creators: detail.creators.slice(0, 100),
       cover_path,
+      first_appearances: extras?.firstAppearances ?? [],
+      story_arcs: extras?.storyArcs ?? [],
+      extras_checked_at: extras ? new Date().toISOString() : null,
     };
     const { data, error } = await sb.from("comics").insert(row).select().single();
     if (error) {

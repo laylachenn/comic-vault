@@ -256,3 +256,72 @@ details summary { cursor: pointer; font-weight: 700 }
 .foot { border-top: 2px solid var(--line); margin-top: 24px; padding-block: 16px; font-size: 12px; color: var(--muted) }
 .foot a { color: var(--muted) }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important } }
+
+/* Keys, reading and stats */
+.pill.key { color: var(--accent-ink); background: var(--accent); border-color: var(--accent-ink) }
+.pill.read { color: var(--muted) }
+.muted { color: var(--muted) }
+.section-label a { text-transform: none; letter-spacing: 0; color: var(--hot) }
+.key-banner { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-weight: 600 }
+.backfill { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin: 14px 0; padding: 12px 14px;
+  background: var(--surface); border: 2px dashed var(--line); border-radius: 12px; font-size: 14px; text-align: left }
+.next-up { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 15px }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 8px 0 4px }
+.tile { display: grid; gap: 2px; background: var(--surface); border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; text-decoration: none; color: inherit }
+a.tile:hover { border-color: var(--ink) }
+.tile b { font-size: 30px; line-height: 1.1; font-weight: 800 }
+.tile span { font-size: 13px; color: var(--muted) }
+
+.stat-card { background: var(--surface); border: 2px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 10px; align-content: start; min-width: 0 }
+.stat-card h3 { font-family: var(--f-display); font-size: 17px; margin: 0 }
+.stat-card .hint { margin: 0 }
+.runs { margin: 14px 0 }
+.stat-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; padding-bottom: 40px }
+
+/* Ranked bars: one hue, 12px thick, rounded at the data end only, value at the tip. */
+.bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px }
+.bars li { display: grid; grid-template-columns: minmax(90px, 40%) 1fr 2.5em; gap: 10px; align-items: center; font-size: 14px }
+.bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; color: inherit }
+a.bar-label:hover { text-decoration: underline }
+.bar-track { height: 12px; display: block }
+.bar-fill { display: block; height: 100%; background: var(--ink); border-radius: 0 4px 4px 0 }
+.bar-value { font-family: var(--f-mono); font-size: 13px; font-variant-numeric: tabular-nums; text-align: right }
+
+/* Run completeness: a name, a meter and a figure per row. */
+.meters { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px }
+.meters li { display: grid; grid-template-columns: minmax(140px, 32%) 1fr minmax(120px, auto); gap: 12px; align-items: center; font-size: 14px }
+.meter-name { font-weight: 700; text-decoration: none; color: inherit; overflow-wrap: anywhere }
+.meter-name:hover { text-decoration: underline }
+.meter-track { display: block; height: 10px; border-radius: 99px; background: var(--line); overflow: hidden }
+.meter-fill { display: block; height: 100%; background: var(--accent); box-shadow: inset -2px 0 0 var(--ink) }
+.meter-fill.done { background: var(--ok); box-shadow: none }
+.meter-figure { font-family: var(--f-mono); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap }
+@media (max-width: 560px) {
+  .meters li { grid-template-columns: 1fr auto; gap: 4px 10px }
+  .meter-track { grid-column: 1 / -1; grid-row: 2 }
+}
+
+.arc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px }
+.arc-row { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; align-items: center; background: var(--surface); border: 2px solid var(--line);
+  border-radius: 12px; padding: 10px; text-decoration: none; color: inherit }
+.arc-row:hover { border-color: var(--ink) }
+.arc-row .img { width: 56px }
+.arc-row .name { font-weight: 700; overflow-wrap: anywhere }
+.arc-row .sub { font-size: 13px; color: var(--muted) }
+.arc-row .count { font-size: 13px; font-weight: 700; color: var(--hot); white-space: nowrap }
+@media (max-width: 480px) { .arc-row { grid-template-columns: 48px 1fr } .arc-row .img { width: 48px } .arc-row .count { display: none } }
+
+.character-head { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 18px; align-items: end; padding-top: 10px }
+.character-head > .img { width: 120px }
+@media (max-width: 520px) { .character-head { grid-template-columns: 80px minmax(0, 1fr); gap: 12px } .character-head > .img { width: 80px } }
+
+/* "Do I own this?" answer */
+.verdict { display: flex; gap: 14px; align-items: center; padding: 18px; border-radius: 14px; border: 3px solid var(--ink); background: var(--surface) }
+.verdict b { font-family: var(--f-display); font-size: 22px; line-height: 1.15 }
+.verdict p { margin: 4px 0 0; color: var(--muted) }
+.verdict-mark { flex: none; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-size: 32px; font-weight: 900; color: var(--surface) }
+.verdict.own { border-color: var(--ok) }
+.verdict.own .verdict-mark { background: var(--ok) }
+.verdict.no .verdict-mark, .verdict.want .verdict-mark { background: var(--hot) }
+.verdict.want { border-color: var(--hot); background: var(--hot-soft) }

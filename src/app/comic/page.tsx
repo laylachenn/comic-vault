@@ -7,6 +7,7 @@ import { Masthead } from "@/components/Masthead";
 import { CoverImage } from "@/components/Cover";
 import { ComicForm } from "@/components/ComicForm";
 import { CoverChooser } from "@/components/CoverChooser";
+import { useMarkRead } from "@/components/Reading";
 import { useVault } from "@/components/VaultProvider";
 import { comicName, seriesKey, seriesName } from "@/lib/comics";
 import { coverUrl, supabase } from "@/lib/supabase";
@@ -44,6 +45,7 @@ function ComicDetail({ comic: c }: { comic: Comic }) {
   const [confirming, setConfirming] = useState(false);
   const [choosing, setChoosing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { markRead, busy: marking } = useMarkRead();
 
   if (editing) {
     return (
@@ -96,6 +98,14 @@ function ComicDetail({ comic: c }: { comic: Comic }) {
         </div>
         {c.status === "wanted" ? <span><b className="pill want">On your want list</b></span> : null}
         <h2>{comicName(c)}</h2>
+        {c.first_appearances?.length ? (
+          <div className="key-banner">
+            <b className="pill key">Key</b>
+            <span>1st appearance of {c.first_appearances.map((n, i) => (
+              <Fragment key={n}>{i ? ", " : ""}<Link href={`/characters?q=${encodeURIComponent(n)}`}>{n}</Link></Fragment>
+            ))}</span>
+          </div>
+        ) : null}
         <dl className="kv">
           {rows.filter(([, v]) => v).map(([k, v]) => (<Fragment key={k}><dt>{k}</dt><dd>{v}</dd></Fragment>))}
         </dl>
@@ -105,6 +115,15 @@ function ComicDetail({ comic: c }: { comic: Comic }) {
             <div className="section-label" style={{ marginTop: 0 }}>Characters</div>
             <div className="chips">
               {c.characters.map((n) => <Link key={n} className="tag" href={`/?q=${encodeURIComponent(n)}`}>{n}</Link>)}
+            </div>
+          </div>
+        ) : null}
+
+        {c.story_arcs?.length ? (
+          <div>
+            <div className="section-label" style={{ marginTop: 0 }}>Part of</div>
+            <div className="chips">
+              {c.story_arcs.map((a) => <Link key={a.id} className="tag" href={`/arc?id=${a.id}`}>{a.name} →</Link>)}
             </div>
           </div>
         ) : null}
@@ -124,6 +143,11 @@ function ComicDetail({ comic: c }: { comic: Comic }) {
 
         <div className="actions">
           {c.status === "wanted" ? <button className="btn small primary" disabled={busy} onClick={markOwned}>Got it!</button> : null}
+          {c.status === "owned" ? (
+            <button className={`btn small ${c.is_read ? "" : "primary"}`} disabled={marking === c.id} onClick={() => markRead(c, !c.is_read)}>
+              {c.is_read ? "Mark unread" : "Mark read"}
+            </button>
+          ) : null}
           <button className="btn small" onClick={() => setEditing(true)}>Edit details</button>
           <button className="btn small" onClick={() => setChoosing(true)}>Change cover</button>
           <Link className="btn small" href={`/series?key=${encodeURIComponent(seriesKey(c))}`}>See the whole series</Link>

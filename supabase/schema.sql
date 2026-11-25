@@ -30,6 +30,11 @@ create table if not exists public.comics (
   tags          text[] not null default '{}',
   notes         text,
 
+  -- Looked up on Comic Vine: characters who first appear here, and the story arcs it's part of
+  first_appearances text[] not null default '{}',
+  story_arcs        jsonb  not null default '[]',  -- [{ "id": 56343, "name": "Death of Spider-Man" }]
+  extras_checked_at timestamptz,                   -- null = not looked up yet
+
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );

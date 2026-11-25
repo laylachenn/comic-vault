@@ -19,8 +19,15 @@ type Step =
   | { kind: "pick"; barcode: ComicBarcode; issue: string; fixing: boolean }
   | { kind: "result"; barcode: ComicBarcode; issue: string; series: Mapping };
 
+type Mode = "add" | "check";
+const MODE_KEY = "scan-mode";
+
 export default function ScanPage() {
   const [step, setStep] = useState<Step>({ kind: "scanning" });
+  // Remembered between visits, so "Do I own this?" stays on for a whole trip to the shop.
+  const [mode, setModeState] = useState<Mode>("add");
+  useEffect(() => { if (localStorage.getItem(MODE_KEY) === "check") setModeState("check"); }, []);
+  function setMode(m: Mode) { setModeState(m); localStorage.setItem(MODE_KEY, m); }
   const [scanKey, setScanKey] = useState(0);
   const [error, setError] = useState("");
 
@@ -52,8 +59,17 @@ export default function ScanPage() {
       <main className="wrap narrow">
         <div className="page-head">
           <Link href="/" className="btn small back">← All comics</Link>
-          <h2>Scan a barcode</h2>
-          {step.kind === "scanning" ? <p className="meta">Works on comics with a barcode, roughly from the 1980s on. For older ones, use <Link href="/add">Add comic</Link>.</p> : null}
+          <h2>{mode === "check" ? "Do I own this?" : "Scan a barcode"}</h2>
+          <div className="tabs" role="group" aria-label="What scanning does" style={{ justifySelf: "start" }}>
+            <button aria-pressed={mode === "add"} onClick={() => setMode("add")}>Add to collection</button>
+            <button aria-pressed={mode === "check"} onClick={() => setMode("check")}>Do I own this?</button>
+          </div>
+          {step.kind === "scanning" ? (
+            <p className="meta">
+              {mode === "check" ? "Scan a comic in the shop to see straight away if you already have it. Nothing gets added. " : ""}
+              Works on comics with a barcode, roughly from the 1980s on.{mode === "add" ? <> For older ones, use <Link href="/add">Add comic</Link>.</> : null}
+            </p>
+          ) : null}
         </div>
         {error ? <p className="notice" role="alert">{error}</p> : null}
 
@@ -69,7 +85,19 @@ export default function ScanPage() {
           />
         ) : null}
 
-        {step.kind === "result" ? (
+        {step.kind === "result" && mode === "check" ? (
+          <CheckResult
+            barcode={step.barcode}
+            issue={step.issue}
+            series={step.series}
+            onIssue={(issue) => setStep({ ...step, issue })}
+            onWrongSeries={() => setStep({ kind: "pick", barcode: step.barcode, issue: step.issue, fixing: true })}
+            onAdd={() => setMode("add")}
+            onNext={scanAgain}
+          />
+        ) : null}
+
+        {step.kind === "result" && mode === "add" ? (
           <ScanResult
             barcode={step.barcode}
             issue={step.issue}
@@ -261,6 +289,78 @@ function ScanResult({ barcode, issue, series, onIssue, onWrongSeries, onNext }: 
         <button className="btn primary" onClick={onNext}>Scan next comic</button>
         <button className="btn small" onClick={onWrongSeries}>Wrong series?</button>
         <Link className="btn small" href={`/series?key=cv-${series.cv_volume_id}`}>See the series</Link>
+      </div>
+    </section>
+  );
+}
+
+/** "016" → "16", "#5" → "5", so barcode issue numbers match the ones saved from Comic Vine. */
+function normIssue(s: string | null | undefined) {
+  return (s ?? "").trim().replace(/^#/, "").replace(/^0+(?=\d)/, "").toLowerCase();
+}
+
+/** "Do I own this?": answers from your own collection straight away, without asking Comic Vine. */
+function CheckResult({ barcode, issue, series, onIssue, onWrongSeries, onAdd, onNext }: {
+  barcode: ComicBarcode;
+  issue: string;
+  series: Mapping;
+  onIssue: (issue: string) => void;
+  onWrongSeries: () => void;
+  onAdd: () => void;
+  onNext: () => void;
+}) {
+  const { comics } = useVault();
+  const [typed, setTyped] = useState("");
+  const name = `${series.series_name}${series.volume_year ? ` (${series.volume_year})` : ""}`;
+  const matches = issue ? comics.filter((c) => c.cv_volume_id === series.cv_volume_id && normIssue(c.issue_number) === normIssue(issue)) : [];
+  const owned = matches.filter((c) => c.status === "owned");
+  const wanted = matches.some((c) => c.status === "wanted");
+  const variant = variantLabel(barcode.addon);
+  const verdict = !issue ? null : owned.length ? "own" : wanted ? "want" : "no";
+
+  // A buzz you can feel without looking: one for "you have it", two for "you don't".
+  useEffect(() => {
+    if (!verdict || typeof navigator === "undefined" || !navigator.vibrate) return;
+    navigator.vibrate(verdict === "own" ? 120 : [80, 80, 80]);
+  }, [verdict]);
+
+  const variants = [...new Set(owned.map((c) => c.variant || "Regular cover"))];
+
+  return (
+    <section className="scan-step">
+      <h3>{name}{issue ? ` #${issue}` : ""}</h3>
+      <BarcodeLine barcode={barcode} issue={issue} />
+
+      {!issue ? (
+        <form className="actions" onSubmit={(e) => { e.preventDefault(); if (typed.trim()) onIssue(typed.trim().replace(/^#/, "")); }}>
+          <span className="hint">Couldn&rsquo;t read the issue number. Type it:</span>
+          <label className="sr-only" htmlFor="check-typed-issue">Issue number</label>
+          <input id="check-typed-issue" className="inline-input" inputMode="numeric" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="16" autoComplete="off" autoFocus />
+          <button className="btn small primary" type="submit">Check</button>
+        </form>
+      ) : null}
+
+      {verdict ? (
+        <div className={`verdict ${verdict}`} role="status">
+          <span className="verdict-mark" aria-hidden="true">{verdict === "own" ? "✓" : "✗"}</span>
+          <div>
+            <b>{verdict === "own" ? "You own it" : verdict === "want" ? "You don't have it. It's on your want list!" : "You don't have this one"}</b>
+            {verdict === "own" ? (
+              <p>
+                {owned.length > 1 ? `${owned.length} copies · ` : ""}{variants.join(", ")}
+                {owned.some((c) => c.is_read) ? " · read" : ""}
+                {variant && !variants.some((v) => v.toLowerCase() === variant.toLowerCase()) ? <><br />This copy is <b>{variant}</b>, which you don&rsquo;t have.</> : null}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="actions">
+        <button className="btn primary" onClick={onNext} autoFocus>Scan next comic</button>
+        {verdict && verdict !== "own" ? <button className="btn small" onClick={onAdd}>Add it to my collection</button> : null}
+        {owned[0] ? <Link className="btn small" href={`/comic?id=${owned[0].id}`}>See my copy</Link> : null}
+        <button className="btn small" onClick={onWrongSeries}>Wrong series?</button>
       </div>
     </section>
   );

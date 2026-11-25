@@ -9,6 +9,11 @@ Track your comic collection. Search for any issue, save it with its cover, and s
 - Search Comic Vine and add issues with their covers
 - Search your collection by character, series or issue
 - See every issue in a series, and which ones you're missing
+- Look up any character and see every comic they've appeared in
+- Key issues: first appearances are found and flagged automatically
+- Story arcs in reading order, and a "read next" list for every series
+- Stats, including how complete each run is
+- "Do I own this?" barcode mode for shopping
 - Want list, grades, prices, notes and tags
 - Export your collection as a CSV file
 

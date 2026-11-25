@@ -157,7 +157,7 @@ function CoverRow({ issueId, chosen, onChoose, pickMain }: { issueId: number; ch
  * One Comic Vine issue with buttons that depend on whether you already have it.
  * "Covers" opens a full-width row of the issue's covers below the card; the one you tap is used when adding.
  */
-export function CvIssueCard({ issue, mine, busy, onAdd, seriesTitle, startOpen = false, noDefaultCover = false }: {
+export function CvIssueCard({ issue, mine, busy, onAdd, seriesTitle, startOpen = false, noDefaultCover = false, showSeries = false, extra }: {
   issue: CvIssue;
   mine: Comic[];
   busy: boolean;
@@ -167,13 +167,17 @@ export function CvIssueCard({ issue, mine, busy, onAdd, seriesTitle, startOpen =
   startOpen?: boolean;
   /** Don't pre-pick the main cover (the barcode says it's a variant). */
   noDefaultCover?: boolean;
+  /** Title the card "Series #12" instead of the story name (for lists that mix series). */
+  showSeries?: boolean;
+  /** Extra labels shown beside Own/Want, like "Read" or "Part 3". */
+  extra?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(startOpen);
   const [chosen, setChosen] = useState<CoverPick | null>(null);
   const owned = mine.filter((c) => c.status === "owned");
   const wanted = mine.find((c) => c.status === "wanted");
   const year = issue.cover_date?.slice(0, 4);
-  const title = issue.name || `${seriesTitle} ${issueLabel(issue.issue_number)}`;
+  const title = showSeries ? `${seriesTitle} ${issueLabel(issue.issue_number)}`.trim() : issue.name || `${seriesTitle} ${issueLabel(issue.issue_number)}`;
   const cover = <CoverImage src={chosen?.thumb ?? issue.image} title={seriesTitle} issue={issue.issue_number} />;
   const url = chosen?.full;
 
@@ -194,6 +198,7 @@ export function CvIssueCard({ issue, mine, busy, onAdd, seriesTitle, startOpen =
         <span className="s">
           {owned.length ? <b className="pill own">{owned.length > 1 ? `Own ×${owned.length}` : "Own"}</b> : null}
           {wanted ? <b className="pill want">Want</b> : null}
+          {extra}
           {year}
         </span>
         <div className="card-actions">

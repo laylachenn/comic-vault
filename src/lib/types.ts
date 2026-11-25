@@ -23,6 +23,11 @@ export type Comic = {
   location: string | null;
   tags: string[];
   notes: string | null;
+  /** Characters whose first appearance is this issue. */
+  first_appearances: string[];
+  story_arcs: StoryArcRef[];
+  /** When first appearances and story arcs were looked up on Comic Vine (null = not yet). */
+  extras_checked_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -47,4 +52,26 @@ export type CvIssue = {
   image: string | null;
   volume_id: number | null;
   volume_name: string | null;
+};
+
+export type StoryArcRef = { id: number; name: string };
+
+export type CvCharacter = {
+  id: number;
+  name: string;
+  real_name: string | null;
+  publisher: string | null;
+  image: string | null;
+  appearances: number | null;
+  first_issue: { id: number; name: string | null; issue_number: string | null } | null;
+};
+
+export type CvStoryArc = {
+  id: number;
+  name: string;
+  deck: string | null;
+  publisher: string | null;
+  image: string | null;
+  /** Issue ids in Comic Vine's reading order. */
+  issueIds: number[];
 };

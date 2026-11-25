@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Comic } from "@/lib/types";
 import { coverUrl } from "@/lib/supabase";
-import { issueLabel, seriesName } from "@/lib/comics";
+import { issueLabel, isKey, keyLine, seriesName } from "@/lib/comics";
 
 /** A cover image, or a printed placeholder when there's no picture. */
 export function CoverImage({ src, title, issue, className }: { src: string | null; title: string; issue?: string | null; className?: string }) {
@@ -18,7 +18,8 @@ export function CoverImage({ src, title, issue, className }: { src: string | nul
   );
 }
 
-type CardComic = Pick<Comic, "id" | "series" | "volume_year" | "issue_number" | "title" | "cover_date" | "cover_path" | "status">;
+type CardComic = Pick<Comic, "id" | "series" | "volume_year" | "issue_number" | "title" | "cover_date" | "cover_path" | "status">
+  & Partial<Pick<Comic, "first_appearances">>;
 
 /**
  * One comic in a grid. By default it links to the comic's page.
@@ -38,9 +39,10 @@ export function ComicCard({ comic, showSeries = true, href, selected, onToggle }
       <CoverImage src={coverUrl(comic.cover_path)} title={name} issue={comic.issue_number} />
       {onToggle ? <span className="tick" aria-hidden="true">{selected ? "✓" : ""}</span> : null}
       <span className="t">{showSeries ? name : comic.title || `${name} ${issueLabel(comic.issue_number)}`}</span>
-      {sub || comic.status === "wanted" ? (
+      {sub || comic.status === "wanted" || isKey(comic) ? (
         <span className="s">
           {comic.status === "wanted" ? <b className="pill want">Want</b> : null}
+          {isKey(comic) ? <b className="pill key" title={keyLine(comic.first_appearances ?? [], 10)}>Key</b> : null}
           {sub}
         </span>
       ) : null}

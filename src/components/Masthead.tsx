@@ -31,6 +31,9 @@ export function Masthead() {
             {menu ? (
               <div className="menu" role="menu">
                 <span className="menu-who">{session?.user.email}</span>
+                <Link role="menuitem" href="/read" onClick={() => setMenu(false)}>Read next</Link>
+                <Link role="menuitem" href="/stats" onClick={() => setMenu(false)}>Stats</Link>
+                <Link role="menuitem" href="/characters" onClick={() => setMenu(false)}>Find a character</Link>
                 <Link role="menuitem" href="/share" onClick={() => setMenu(false)}>Share my collection</Link>
                 <button role="menuitem" onClick={exportCsv} disabled={!comics.length}>Download backup (.csv)</button>
                 <button role="menuitem" onClick={signOut}>Sign out</button>
