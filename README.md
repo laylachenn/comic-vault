@@ -1,32 +1,31 @@
-# Layla's Comic Vault
+# 📚 layla's comic vault
 
-Track your comic collection. Search for any issue, save it with its cover, and see which issues of a series you're missing.
+a cozy little home for my comic collection ✨
 
-**Live:** https://laylas-comic-vault.vercel.app
+**live →** https://laylas-comic-vault.vercel.app
 
-## Features
+## what it does
 
-- Search Comic Vine and add issues with their covers
-- Search your collection by character, series or issue
-- See every issue in a series, and which ones you're missing
-- Look up any character and see every comic they've appeared in
-- Key issues: first appearances are found and flagged automatically
-- Story arcs in reading order, and a "read next" list for every series
-- Stats, including how complete each run is
-- "Do I own this?" barcode mode for shopping
-- Want list, grades, prices, notes and tags
-- Export your collection as a CSV file
+- 🔍 search comic vine and save issues with their covers
+- 🗂️ see every issue in a series (and which ones i'm missing)
+- 🦸 look up a character and find every comic they're in
+- 🔑 first appearances get flagged as key issues automatically
+- 📖 story arcs in reading order + a "read next" list
+- 📊 stats on how complete each run is
+- 📷 "do i own this?" barcode mode for comic shop trips
+- 💭 want list, grades, prices, notes and tags
+- 📤 export everything as a csv
 
-## Run locally
+## run it yourself
 
-1. Create a [Supabase](https://supabase.com) project and run `supabase/schema.sql` in its SQL Editor.
-2. Get a free [Comic Vine API key](https://comicvine.gamespot.com/api/).
-3. Copy `.env.local.example` to `.env.local` and fill in the values.
-4. Start the site:
+1. make a [supabase](https://supabase.com) project and run `supabase/schema.sql` in the sql editor
+2. grab a free [comic vine api key](https://comicvine.gamespot.com/api/)
+3. copy `.env.local.example` to `.env.local` and fill it in
+4. then:
 
    ```bash
    npm install
    npm run dev
    ```
 
-Built with Next.js and Supabase. Comic data and covers come from [Comic Vine](https://comicvine.gamespot.com).
+made with next.js + supabase 💌 comic data and covers from [comic vine](https://comicvine.gamespot.com)
