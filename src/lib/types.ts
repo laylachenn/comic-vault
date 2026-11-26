@@ -42,6 +42,12 @@ export type CvVolume = {
   publisher: string | null;
   count_of_issues: number | null;
   image: string | null;
+  /** Year of the latest issue, when known. */
+  end_year: string | null;
+  /** Still putting out issues. */
+  ongoing: boolean;
+  /** Set for a translated or local reprint, e.g. "German edition"; null for the original. */
+  edition: string | null;
 };
 
 export type CvIssue = {

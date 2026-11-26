@@ -8,7 +8,7 @@ import { CoverImage } from "@/components/Cover";
 import { ComicForm } from "@/components/ComicForm";
 import { CvIssueCard, useAddFromCv, useCvIssues } from "@/components/CvIssues";
 import { CvRangeAdd } from "@/components/RangeAdd";
-import { seriesKey } from "@/lib/comics";
+import { seriesKey, volumeTitle } from "@/lib/comics";
 import { useVault } from "@/components/VaultProvider";
 import { api } from "@/lib/api";
 import type { CvVolume } from "@/lib/types";
@@ -103,11 +103,11 @@ function AddComic() {
           <div className="results">
             <div className="section-label">{volumes.length} series found. Pick yours.</div>
             {volumes.map((v) => (
-              <button key={v.id} className="vol" onClick={() => setPicked({ id: v.id, issue: pendingIssue.current })}>
+              <button key={v.id} className={`vol${v.edition ? " reprint" : ""}`} onClick={() => setPicked({ id: v.id, issue: pendingIssue.current })}>
                 <CoverImage src={v.image} title={v.name} />
                 <span>
-                  <span className="name">{v.name}{v.start_year ? ` (${v.start_year})` : ""}</span><br />
-                  <span className="sub">{v.publisher || "Unknown publisher"}</span>
+                  <span className="name">{volumeTitle(v)}</span><br />
+                  <span className="sub">{v.publisher || "Unknown publisher"}{v.edition ? <span className="reprint-tag">{v.edition}</span> : null}</span>
                 </span>
                 <span className="count">{v.count_of_issues ?? "?"} issues</span>
               </button>
@@ -128,7 +128,7 @@ function IssuePicker({ volumeId, issueFilter, onBack, onClearFilter }: { volumeI
   const { comics } = useVault();
   const { volume, issues, total, loading, error, hasMore, loadMore, retry } = useCvIssues(volumeId, issueFilter);
   const { add, busy } = useAddFromCv();
-  const title = volume ? `${volume.name}${volume.start_year ? ` (${volume.start_year})` : ""}` : "Loading series…";
+  const title = volume ? volumeTitle(volume) : "Loading series…";
   const mineByIssue = useMemo(() => {
     const m = new Map<number, typeof comics>();
     for (const c of comics) if (c.cv_issue_id) m.set(c.cv_issue_id, [...(m.get(c.cv_issue_id) ?? []), c]);

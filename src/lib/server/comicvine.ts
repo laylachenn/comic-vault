@@ -66,7 +66,48 @@ function pickImage(img: CvImage, size: "medium" | "large" = "medium"): string | 
   return url;
 }
 
-type RawVolume = { id: number; name: string; start_year?: string | null; publisher?: { name?: string } | null; count_of_issues?: number | null; image?: CvImage };
+export type RawVolume = {
+  id: number; name: string; start_year?: string | null; publisher?: { name?: string } | null; count_of_issues?: number | null; image?: CvImage;
+  last_issue?: { id?: number } | null;
+};
+
+/**
+ * Publishers that mostly put out translated or local reprints of American comics, and the
+ * country each one sells in. Comic Vine lists these editions alongside the originals under the
+ * same name, which makes a search for "Avengers" a wall of look-alikes.
+ * More specific names come first ("Panini Verlag" before plain "Panini").
+ */
+const REPRINT_PUBLISHERS: [RegExp, string][] = [
+  [/^panini (verlag|deutschland)/i, "German"],
+  [/^panini france/i, "French"],
+  [/^panini (españa|espana)/i, "Spanish"],
+  [/^panini (uk|books uk)/i, "UK"],
+  [/^panini (brasil|brazil)/i, "Brazilian"],
+  [/^panini (méxico|mexico)/i, "Mexican"],
+  [/^panini (italia|italy)/i, "Italian"],
+  [/^egmont polska/i, "Polish"],
+  [/^egmont (ehapa|verlag)|^ehapa|^carlsen|^dino comics|^bastei|^marvel deutschland|^dark horse deutschland/i, "German"],
+  [/^editorial (televisa|vid|novaro)/i, "Mexican"],
+  [/^(editora )?abril\b|^mythos/i, "Brazilian"],
+  [/^planeta|^planet deagostini|^ecc ediciones|^ediciones zinco|^salvat|^norma editorial/i, "Spanish"],
+  [/^ovni press/i, "Argentine"],
+  [/^urban comics|^hachette|^marvel france|^lug\b|^aredit|^soleil us comics/i, "French"],
+  [/^mondadori|^rw (edizioni|lion)|^star comics|^marvel italia/i, "Italian"],
+  [/^levoir|^g\. ?floy/i, "Portuguese"],
+  [/^eaglemoss|^thorpe & porter|^world distributors|^l\. miller/i, "UK"],
+  [/^newton comics|^horwitz|^k\. ?g\. murray|^yaffa/i, "Australian"],
+  // These names cover several countries, so we can only say it's a reprint.
+  [/^panini|^egmont|^semic/i, ""],
+];
+
+/** "German edition" for a known reprint publisher, "Reprint edition" if the country is unclear, else null. */
+export function reprintEdition(publisher: string | null): string | null {
+  const p = (publisher || "").trim();
+  if (!p) return null;
+  for (const [re, country] of REPRINT_PUBLISHERS) if (re.test(p)) return `${country || "Reprint"} edition`;
+  return null;
+}
+
 type RawIssue = { id: number; name?: string | null; issue_number?: string | null; cover_date?: string | null; image?: CvImage; volume?: { id?: number; name?: string } | null };
 
 export function mapVolume(v: RawVolume): CvVolume {
@@ -77,6 +118,9 @@ export function mapVolume(v: RawVolume): CvVolume {
     publisher: v.publisher?.name || null,
     count_of_issues: v.count_of_issues ?? null,
     image: pickImage(v.image ?? null),
+    end_year: null,
+    ongoing: false,
+    edition: reprintEdition(v.publisher?.name || null),
   };
 }
 
@@ -92,7 +136,39 @@ export function mapIssue(i: RawIssue): CvIssue {
   };
 }
 
-export const VOLUME_FIELDS = "id,name,start_year,publisher,count_of_issues,image";
+export const VOLUME_FIELDS = "id,name,start_year,publisher,count_of_issues,image,last_issue";
+
+/**
+ * Fills in the year each series' last issue came out, so look-alike series read as
+ * "Avengers (2018–2023)" instead of just "Avengers (2018)". One Comic Vine request covers up to 100 series.
+ */
+export async function addRunYears(raw: RawVolume[]): Promise<CvVolume[]> {
+  const volumes = raw.map(mapVolume);
+  const lastIds = raw.map((v) => v.last_issue?.id).filter((id): id is number => Number.isInteger(id) && id! > 0);
+  if (!lastIds.length) return volumes;
+  let dates: Map<number, string>;
+  try {
+    const body = await cv<{ results: { id: number; cover_date?: string | null }[] }>(
+      "issues",
+      { filter: `id:${[...new Set(lastIds)].slice(0, 100).join("|")}`, field_list: "id,cover_date", limit: "100" },
+      86400,
+    );
+    dates = new Map((body.results || []).filter((i) => i.cover_date).map((i) => [i.id, i.cover_date!]));
+  } catch {
+    return volumes; // The years are a nice extra; never fail the search over them.
+  }
+  // Cover dates run a couple of months ahead of the shelf date, so anything dated in the
+  // last few months (or later) is a series still coming out.
+  const recent = new Date();
+  recent.setMonth(recent.getMonth() - 4);
+  const cutoff = recent.toISOString().slice(0, 10);
+  return volumes.map((v, i) => {
+    const date = dates.get(raw[i].last_issue?.id ?? 0);
+    if (!date) return v;
+    const ongoing = date >= cutoff && (v.count_of_issues ?? 0) > 1;
+    return { ...v, end_year: date.slice(0, 4), ongoing };
+  });
+}
 export const ISSUE_FIELDS = "id,name,issue_number,cover_date,image,volume";
 
 export type RawIssueDetail = RawIssue & {
@@ -168,9 +244,9 @@ export async function downloadCover(url: string): Promise<{ bytes: ArrayBuffer; 
   }
 }
 
-export async function getVolume(id: number): Promise<CvVolume> {
+export async function getVolume(id: number, withRunYears = false): Promise<CvVolume> {
   const body = await cv<{ results: RawVolume }>(`volume/4050-${id}`, { field_list: VOLUME_FIELDS }, 86400);
-  return mapVolume(body.results);
+  return withRunYears ? (await addRunYears([body.results]))[0] : mapVolume(body.results);
 }
 
 /** Splits a list into chunks of `size` (Comic Vine's id filters take up to 100 at a time). */

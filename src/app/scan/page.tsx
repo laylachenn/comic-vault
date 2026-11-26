@@ -12,6 +12,7 @@ import { parseAddOn, variantLabel, type ComicBarcode } from "@/lib/barcode";
 import { CoverChooser } from "@/components/CoverChooser";
 import { supabase } from "@/lib/supabase";
 import type { Comic, CvIssue, CvVolume } from "@/lib/types";
+import { volumeTitle } from "@/lib/comics";
 
 type Mapping = { code: string; cv_volume_id: number; series_name: string; volume_year: string | null };
 type Step =
@@ -198,9 +199,9 @@ function SeriesPicker({ barcode, issue: initialIssue, fixing, onPick, onCancel }
       {results ? (
         <div className="results">
           {results.length ? results.map((v) => (
-            <button key={v.id} className="vol" onClick={() => pick(v)}>
+            <button key={v.id} className={`vol${v.edition ? " reprint" : ""}`} onClick={() => pick(v)}>
               <CoverImage src={v.image} title={v.name} />
-              <span><span className="name">{v.name}{v.start_year ? ` (${v.start_year})` : ""}</span><br /><span className="sub">{v.publisher || "Unknown publisher"}</span></span>
+              <span><span className="name">{volumeTitle(v)}</span><br /><span className="sub">{v.publisher || "Unknown publisher"}{v.edition ? <span className="reprint-tag">{v.edition}</span> : null}</span></span>
               <span className="count">{v.count_of_issues ?? "?"} issues</span>
             </button>
           )) : <p className="hint">No series found. Try fewer words.</p>}

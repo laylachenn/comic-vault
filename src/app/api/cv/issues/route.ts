@@ -28,7 +28,7 @@ export async function GET(req: Request) {
         { filter, field_list: ISSUE_FIELDS, limit: String(PAGE), offset: String(offset) },
         86400,
       ),
-      offset === 0 ? getVolume(volume) : Promise.resolve(null),
+      offset === 0 ? getVolume(volume, true) : Promise.resolve(null),
     ]);
     return NextResponse.json({
       volume: vol,

@@ -1,4 +1,4 @@
-import type { Comic } from "./types";
+import type { Comic, CvVolume } from "./types";
 
 /** Orders issue numbers like a collector would: 1, 2, 10, 10.1, then annuals/specials. */
 export function issueSortValue(issue: string | null | undefined): number {
@@ -22,6 +22,15 @@ export function seriesKey(c: Pick<Comic, "cv_volume_id" | "series" | "volume_yea
 export function seriesName(c: Pick<Comic, "series" | "volume_year">): string {
   const y = (c.volume_year || "").trim();
   return (c.series || "Unknown series").trim() + (y ? ` (${y})` : "");
+}
+
+/** "Avengers (2018–2023)", "Avengers (2023–present)" or "Avengers (1996)" for a Comic Vine series. */
+export function volumeTitle(v: Pick<CvVolume, "name" | "start_year"> & Partial<Pick<CvVolume, "end_year" | "ongoing">>): string {
+  const start = (v.start_year || "").trim();
+  let years = start;
+  if (start && v.ongoing) years = `${start}–present`;
+  else if (start && v.end_year && v.end_year > start) years = `${start}–${v.end_year}`;
+  return v.name + (years ? ` (${years})` : "");
 }
 
 export function comicName(c: Comic): string {

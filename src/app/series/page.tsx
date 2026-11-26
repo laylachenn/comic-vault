@@ -8,7 +8,7 @@ import { ComicCard } from "@/components/Cover";
 import { CvIssueCard, useAddFromCv, useCvIssues } from "@/components/CvIssues";
 import { CvRangeAdd } from "@/components/RangeAdd";
 import { useVault } from "@/components/VaultProvider";
-import { issueSortValue, seriesKey, seriesName } from "@/lib/comics";
+import { issueSortValue, seriesKey, seriesName, volumeTitle } from "@/lib/comics";
 import type { Comic } from "@/lib/types";
 
 export default function Page() {
@@ -64,7 +64,7 @@ function CvSeries({ volumeId, mine }: { volumeId: number; mine: Comic[] }) {
   const loadedIds = new Set(issues.map((i) => i.id));
   const extras = !hasMore && !loading ? mine.filter((c) => !c.cv_issue_id || !loadedIds.has(c.cv_issue_id)) : [];
   const visible = issues.filter((i) => show === "all" || (show === "owned" ? ownsIssue(i.id) : !ownsIssue(i.id)));
-  const name = volume ? `${volume.name}${volume.start_year ? ` (${volume.start_year})` : ""}` : mine[0] ? seriesName(mine[0]) : "Loading series…";
+  const name = volume ? volumeTitle(volume) : mine[0] ? seriesName(mine[0]) : "Loading series…";
   const pct = total ? Math.min(100, Math.round((ownedCount / total) * 100)) : 0;
 
   return (
