@@ -142,7 +142,7 @@ function ComicDetail({ comic: c }: { comic: Comic }) {
         ) : null}
 
         <div className="actions">
-          {c.status === "wanted" ? <button className="btn small primary" disabled={busy} onClick={markOwned}>Got it!</button> : null}
+          {c.status === "wanted" ? <button className="btn small primary" disabled={busy} onClick={markOwned}>Move to owned</button> : null}
           {c.status === "owned" ? (
             <button className={`btn small ${c.is_read ? "" : "primary"}`} disabled={marking === c.id} onClick={() => markRead(c, !c.is_read)}>
               {c.is_read ? "Mark unread" : "Mark read"}

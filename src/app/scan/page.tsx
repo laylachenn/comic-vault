@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Masthead } from "@/components/Masthead";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { CoverImage } from "@/components/Cover";
@@ -20,6 +20,8 @@ type Step =
   | { kind: "pick"; barcode: ComicBarcode; issue: string; fixing: boolean }
   | { kind: "result"; barcode: ComicBarcode; issue: string; series: Mapping };
 
+type LastSearch = { code: string; q: string; results: CvVolume[] | null };
+
 type Mode = "add" | "check";
 const MODE_KEY = "scan-mode";
 
@@ -31,6 +33,8 @@ export default function ScanPage() {
   function setMode(m: Mode) { setModeState(m); localStorage.setItem(MODE_KEY, m); }
   const [scanKey, setScanKey] = useState(0);
   const [error, setError] = useState("");
+  // The series search for the current barcode, kept so "Wrong series?" doesn't make you retype it.
+  const [lastSearch, setLastSearch] = useState<LastSearch | null>(null);
 
   function scanAgain() {
     setError("");
@@ -52,6 +56,12 @@ export default function ScanPage() {
     if (error) { setError("Couldn't save that match. Try again."); return; }
     setError("");
     setStep({ kind: "result", barcode, issue, series: row as Mapping });
+  }
+
+  function wrongSeries(s: Extract<Step, { kind: "result" }>) {
+    // Matched straight from a saved barcode, so nothing was typed: start from the wrong series' name instead.
+    if (lastSearch?.code !== s.barcode.main) setLastSearch({ code: s.barcode.main, q: s.series.series_name, results: null });
+    setStep({ kind: "pick", barcode: s.barcode, issue: s.issue, fixing: true });
   }
 
   return (
@@ -81,6 +91,8 @@ export default function ScanPage() {
             barcode={step.barcode}
             issue={step.issue}
             fixing={step.fixing}
+            initialSearch={lastSearch?.code === step.barcode.main ? lastSearch : null}
+            onSearchChange={(q, results) => setLastSearch({ code: step.barcode.main, q, results })}
             onPick={(v, issue) => chooseSeries(step.barcode, issue, v)}
             onCancel={scanAgain}
           />
@@ -92,7 +104,7 @@ export default function ScanPage() {
             issue={step.issue}
             series={step.series}
             onIssue={(issue) => setStep({ ...step, issue })}
-            onWrongSeries={() => setStep({ kind: "pick", barcode: step.barcode, issue: step.issue, fixing: true })}
+            onWrongSeries={() => wrongSeries(step)}
             onAdd={() => setMode("add")}
             onNext={scanAgain}
           />
@@ -104,7 +116,7 @@ export default function ScanPage() {
             issue={step.issue}
             series={step.series}
             onIssue={(issue) => setStep({ ...step, issue })}
-            onWrongSeries={() => setStep({ kind: "pick", barcode: step.barcode, issue: step.issue, fixing: true })}
+            onWrongSeries={() => wrongSeries(step)}
             onNext={scanAgain}
           />
         ) : null}
@@ -125,17 +137,19 @@ function BarcodeLine({ barcode, issue }: { barcode: ComicBarcode; issue: string 
 }
 
 /** First time a barcode is seen: which series is it? Your own series are offered first. */
-function SeriesPicker({ barcode, issue: initialIssue, fixing, onPick, onCancel }: {
+function SeriesPicker({ barcode, issue: initialIssue, fixing, initialSearch, onSearchChange, onPick, onCancel }: {
   barcode: ComicBarcode;
   issue: string;
   fixing: boolean;
+  initialSearch: LastSearch | null;
+  onSearchChange: (q: string, results: CvVolume[] | null) => void;
   onPick: (v: { id: number; name: string; start_year: string | null }, issue: string) => void;
   onCancel: () => void;
 }) {
   const { comics } = useVault();
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialSearch?.q ?? "");
   const [issue, setIssue] = useState(initialIssue);
-  const [results, setResults] = useState<CvVolume[] | null>(null);
+  const [results, setResults] = useState<CvVolume[] | null>(initialSearch?.results ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -149,6 +163,13 @@ function SeriesPicker({ barcode, issue: initialIssue, fixing, onPick, onCancel }
     return [...seen.values()].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 12);
   }, [comics]);
 
+  // Coming back with a name but no results yet (see wrongSeries): run that search straight away.
+  const ran = useRef(false);
+  useEffect(() => {
+    if (!ran.current && q.trim().length >= 2 && !results) { ran.current = true; search(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function search(e?: { preventDefault(): void }) {
     e?.preventDefault();
     if (q.trim().length < 2) { setError("Type at least two letters of the series name."); return; }
@@ -157,6 +178,7 @@ function SeriesPicker({ barcode, issue: initialIssue, fixing, onPick, onCancel }
     try {
       const { volumes } = await api<{ volumes: CvVolume[] }>(`/api/cv/volumes?q=${encodeURIComponent(q.trim())}`);
       setResults(volumes);
+      onSearchChange(q, volumes);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Search failed. Try again.");
     } finally {

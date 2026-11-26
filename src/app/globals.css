@@ -108,6 +108,8 @@ a.cover:hover .img { transform: translateY(-3px) rotate(-.6deg) }
 .stack .img:nth-child(3) { transform: rotate(-4deg) translate(-6px, 2px) }
 .missing .img { opacity: .45; filter: grayscale(.8) }
 .card-actions { display: flex; gap: 6px; flex-wrap: wrap }
+/* Own/Want on issue cards: bigger tap targets on phones, sharing the card's width. */
+@media (max-width: 640px) { .card-actions .add-btn { min-height: 42px; padding: 0 10px; font-size: 15px; flex: 1 1 auto } }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px }
 .chip { border: 2px solid var(--ink); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-weight: 600; cursor: pointer; font-size: 14px; text-decoration: none; color: inherit }

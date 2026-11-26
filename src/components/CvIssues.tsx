@@ -182,11 +182,11 @@ export function CvIssueCard({ issue, mine, busy, onAdd, seriesTitle, startOpen =
   const url = chosen?.full;
 
   const addButtons = (size: "tiny" | "small") => owned.length ? (
-    <button className={`btn ${size}`} disabled={busy} onClick={() => onAdd("owned", undefined, url)}>+ Another copy</button>
+    <button className={`btn ${size} add-btn`} disabled={busy} onClick={() => onAdd("owned", undefined, url)}>+ Another copy</button>
   ) : (
     <>
-      <button className={`btn ${size} primary`} disabled={busy} onClick={() => onAdd("owned", wanted, url)}>{busy ? "Adding…" : wanted ? "Got it!" : "I have it"}</button>
-      {!wanted ? <button className={`btn ${size}`} disabled={busy} onClick={() => onAdd("wanted", undefined, url)}>Want</button> : null}
+      <button className={`btn ${size} primary add-btn`} disabled={busy} onClick={() => onAdd("owned", wanted, url)}>{busy ? (wanted ? "Moving…" : "Adding…") : wanted ? "Move to owned" : "I have it"}</button>
+      {!wanted ? <button className={`btn ${size} add-btn`} disabled={busy} onClick={() => onAdd("wanted", undefined, url)}>Want</button> : null}
     </>
   );
 
